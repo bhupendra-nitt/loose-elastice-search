@@ -1,80 +1,71 @@
 import fs from 'fs';
 
+export const saveDocument = doc => {
+  let sql = `INSERT INTO documents(description) \
+    VALUES('${doc.document}');`
+  return sql;
+}
+
 export const indexSearchRequest = data => {
-  const written = writeToDb('./db/documents.json', JSON.stringify(data))
-  written.then(json => {
-    if(json) {
-      performIndexing()
-    }
-  })
+  return data.split(' ')
 }
 
-export const writeToDocuments = data => {
-  writeToDb('./db/documents.json', JSON.stringify(data))
+export const splitTitleIntoArray = title => {
+  return title.split(' ')
 }
 
-export const retrieveSearchRequest = async () => {
-  const db = readDb('./db/indexing.json')
-  db.then(result => {
-    return new Promise((resolve, reject) => {
-      if(result) {
-        resolve(JSON.stringify({status: 200, success: true}))
-      } else {
-        reject(JSON.stringify({status: 404, success: false}))
+export const saveIndexes = elem => {
+  let sql = `INSERT INTO indexes(title) \
+    VALUES('${elem}');`
+  return sql;
+}
+
+export const insertToTitleWords = title => {
+  const sql = `INSERT IGNORE INTO title_words(title) VALUES('${title}');`
+  return sql
+}
+
+export const fetchWordCount = _ => {
+  return `SELECT count from word_count`
+}
+
+export const countWords = doc => {
+  const c =  doc.split(' ').length
+  return c
+}
+
+export const updateCount = count => {
+  return `UPDATE word_count SET count = ${count} WHERE id = 1;`
+}
+
+export const insertCount = count => {
+  return `INSERT INTO word_count(count) VALUES (${count});`
+}
+
+export const insertIntoTitleWordDoc = data => {
+  return `INSERT INTO title_word_document(title_word)`
+}
+
+export const getCurrentTF = (frequency, titleWordId, documentId) => {
+  return `SELECT count * from title_word_document where t_id = ${id}; `
+}
+
+export const getTotalFrequency = id => {
+  return `SELECT SUM(frequency) from title_word_document where t_id = ${id};`
+}
+
+export const setCurrentFrequency = (tid, did, frequency) => {
+  return `INSERT IGNORE INTO title_word_document(t_id, d_id, frequency) VALUES('${tid}', '${did}', '${frequency}');`
+}
+
+export const getFrequency = (word, string) => {
+  let count = 0
+  let cleanString = string.replace(/[\.,-\/#!$%\^&\*;:{}=\-_`~()]/g,""),
+    words = cleanString.split(' ')
+    words.forEach(element => {
+      if(element === word) {
+        count = count + 1
       }
     })
-  })
+    return count
 }
-
-const writeToDb = async (file, json) => {
-  fs.readFile(file, 'utf8', function readFileCallback(err, data) {
-    if (err){
-        console.log(err);
-    } else {
-      let obj = {}
-      if(data) {
-        obj = JSON.parse(data)
-        obj.table.push(json)
-      } else {
-        obj.table = []
-        obj.table.push(json)
-      }
-      json = JSON.stringify(obj); 
-     return new Promise((resolve, reject) =>  fs.writeFile(file, json, 'utf8', (err, data) => {
-        if(err) {
-          reject(null)
-        } else {
-          resolve(data)
-        }
-      })
-      )
-    }
-  });
-}
-
-const readDb = async file => {
-  return new Promise( (resolve, reject) => {
-    fs.readFile(file, 'utf8', function readFileCallback (err, data) {
-      if (err){
-         reject(null)
-      } else {
-      return resolve(data)
-      }
-    })
-  }) 
-}
-  const performIndexing = data => {
-  const indexedDb = readDb('./db/indexing.json')
-  indexedDb.then(json => {
-    if(json) {
-    }
-  })
-}
-
-// const sortDocuments = data => {
-
-// }
-
-// const dynamicSort = (property) => {
-//   objs.sort((a, b) => a.last_nom.localeCompare(b.last_nom))
-// }
