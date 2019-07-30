@@ -46,16 +46,12 @@ export const insertIntoTitleWordDoc = data => {
   return `INSERT INTO title_word_document(title_word)`
 }
 
-export const getCurrentTF = (frequency, titleWordId, documentId) => {
-  return `SELECT count * from title_word_document where t_id = ${id}; `
-}
-
 export const getTotalFrequency = id => {
   return `SELECT SUM(frequency) from title_word_document where t_id = ${id};`
 }
 
-export const setCurrentFrequency = (tid, did, frequency) => {
-  return `INSERT IGNORE INTO title_word_document(t_id, d_id, frequency) VALUES('${tid}', '${did}', '${frequency}');`
+export const setCurrentFrequency = (tid, did, frequency, tf) => {
+  return `INSERT IGNORE INTO title_word_document(t_id, d_id, frequency, tf) VALUES('${tid}', '${did}', '${frequency}', '${tf}');`
 }
 
 export const getFrequency = (word, string) => {
@@ -68,4 +64,8 @@ export const getFrequency = (word, string) => {
       }
     })
     return count
+}
+
+export const fetchResults = elem => {
+  return `SELECT * from title_word_document where t_id in (SELECT id from title_words where title = '${elem}');`
 }

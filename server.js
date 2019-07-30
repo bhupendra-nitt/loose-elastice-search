@@ -13,7 +13,8 @@ import {
   insertToTitleWords,
   getFrequency,
   getTotalFrequency,
-  setCurrentFrequency
+  setCurrentFrequency,
+  fetchResults
 } from './helper'
 
 const PORT = 5000;
@@ -72,11 +73,31 @@ connection.query('CREATE DATABASE IF NOT EXISTS ledb', function (err) {
   })
 })
 
-app.get('/search', async (req, res) => {
-    const result = retrieveSearchRequest()
-    res.json(result.then(json => {
-      console.log(result)
-    }))
+app.get('/search', (req, res) => { // Building
+  const queryString = req.query.q
+  const queryArray = queryString.split(' ')
+  let results = []
+  queryArray.forEach(elem => {
+    connection.query(fetchResults(elem), (err, result) => {
+      if (err) throw err
+      else {
+        console.log(result)
+      }
+    })
+  })
+});
+
+app.get('/build', (req, res) => { // TODO
+  const queryString = req.query.q
+  const queryArray = queryString.split(' ')
+  queryArray.forEach(elem => {
+    connection.query(fetchResults(elem), (err, result) => {
+      if (err) throw err
+      else {
+        console.log(result)
+      }
+    })
+  })
 });
 
 app.post('/index', (req, res) => {
@@ -122,17 +143,20 @@ app.post('/index', (req, res) => {
          else {
            const titleWordId = result.insertId
            const frequency = getFrequency(element, req.body.document)
+           const words = countWords(req.body.document)
+           const tf = parseFloat(frequency/words)
+           console.log('tf' + tf)
            connection.query(getTotalFrequency(titleWordId), (err, result) => {
              if (err) throw err
              else {
               if(result[0]['SUM(frequency)'] === null) {
-                connection.query(setCurrentFrequency(titleWordId, documentId, frequency),(err, result) => {
+                connection.query(setCurrentFrequency(titleWordId, documentId, frequency, tf),(err, result) => {
                   if (err) throw err
                   else {
                   }
                 })
               } else {
-                connection.query(setCurrentFrequency(titleWordId, documentId, frequency + parseInt(result[0]['SUM(frequency)'])),(err, result) => {
+                connection.query(setCurrentFrequency(titleWordId, documentId, frequency + parseInt(result[0]['SUM(frequency)'], tf)),(err, result) => {
                   if (err) throw err
                   else {
                   }
