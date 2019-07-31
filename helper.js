@@ -67,5 +67,9 @@ export const getFrequency = (word, string) => {
 }
 
 export const fetchResults = elem => {
-  return `SELECT * from title_word_document where t_id in (SELECT id from title_words where title = '${elem}');`
+  return `SELECT CONVERT(description USING utf8) as description from documents WHERE id IN (SELECT d_id from title_word_document WHERE tf IN (SELECT max(tf) from title_word_document WHERE t_id IN (SELECT id from title_words WHERE title='${elem}')));`
+}
+
+export const checkIfTitleExist = elem => {
+  return `SELECT * from title_words where title = '${elem}';`
 }

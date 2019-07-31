@@ -3,7 +3,6 @@ import bodyParser from 'body-parser'
 import mysql from 'mysql'
 
 import {
-  retrieveSearchRequest,
   saveDocument,
   splitTitleIntoArray,
   fetchWordCount,
@@ -14,7 +13,8 @@ import {
   getFrequency,
   getTotalFrequency,
   setCurrentFrequency,
-  fetchResults
+  fetchResults,
+  checkIfTitleExist
 } from './helper'
 
 const PORT = 5000;
@@ -45,29 +45,31 @@ connection.query('CREATE DATABASE IF NOT EXISTS ledb', function (err) {
       })
 
   connection.query('CREATE TABLE IF NOT EXISTS title_words('
-    + 'id INT NOT NULL AUTO_INCREMENT,'
-    + 'title VARCHAR(30) UNIQUE,'
-    + 'PRIMARY KEY(id)'
-    +  ')', (err) => {
+      + 'id INT NOT NULL AUTO_INCREMENT,'
+      + 'title VARCHAR(30) UNIQUE,'
+      + 'PRIMARY KEY(id)'
+      +  ')', (err) => {
         if (err) throw err
     })
 
     connection.query('CREATE TABLE IF NOT EXISTS title_word_document('
-    + 't_id INT NOT NULL,'
-    + 'd_id INT NOT NULL,'
-    + 'PRIMARY KEY(t_id, d_id),'
-    + 'frequency INT,'
-    + 'tf DECIMAL,'
-    + 'idf DECIMAL'
-    +  ')', (err) => {
-        if (err) throw err
-    })
+      + 'id INT NOT NULL AUTO_INCREMENT,'
+      + 'PRIMARY KEY(id),'
+      + 't_id INT NOT NULL,'
+      + 'd_id INT NOT NULL,'
+      + 'UNIQUE(t_id, d_id),'
+      + 'frequency INT,'
+      + 'tf DECIMAL(5, 4),'
+      + 'idf DECIMAL(6, 4)'
+      +  ')', (err) => {
+          if (err) throw err
+      })
 
     connection.query('CREATE TABLE IF NOT EXISTS word_count('
-    + 'id INT NOT NULL AUTO_INCREMENT,'
-    + 'count INT NOT NULL DEFAULT 0,'
-    + 'PRIMARY KEY(id)'
-    +  ')', (err, result) => {
+      + 'id INT NOT NULL AUTO_INCREMENT,'
+      + 'count INT NOT NULL DEFAULT 0,'
+      + 'PRIMARY KEY(id)'
+      +  ')', (err, result) => {
         if (err) throw err
     })
   })
@@ -81,24 +83,25 @@ app.get('/search', (req, res) => { // Building
     connection.query(fetchResults(elem), (err, result) => {
       if (err) throw err
       else {
-        console.log(result)
+                  res.status(200).send([result[0].description])
+
       }
     })
   })
 });
 
-app.get('/build', (req, res) => { // TODO
-  const queryString = req.query.q
-  const queryArray = queryString.split(' ')
-  queryArray.forEach(elem => {
-    connection.query(fetchResults(elem), (err, result) => {
-      if (err) throw err
-      else {
-        console.log(result)
-      }
-    })
-  })
-});
+// app.get('/build', (req, res) => { // TODO
+//   const queryString = req.query.q
+//   const queryArray = queryString.split(' ')
+//   queryArray.forEach(elem => {
+//     connection.query(fetchResults(elem), (err, result) => {
+//       if (err) throw err
+//       else {
+//         console.log(result)
+//       }
+//     })
+//   })
+// });
 
 app.post('/index', (req, res) => {
   if(!req.body.document) {
@@ -138,34 +141,40 @@ app.post('/index', (req, res) => {
      })
      const indexWordsArray = splitTitleIntoArray(req.body.title)
      indexWordsArray.forEach(element => {
-       connection.query(insertToTitleWords(element), (err, result) => {
+       connection.query(checkIfTitleExist(element),(err, result) => {
          if (err) throw err
          else {
-           const titleWordId = result.insertId
-           const frequency = getFrequency(element, req.body.document)
-           const words = countWords(req.body.document)
-           const tf = parseFloat(frequency/words)
-           console.log('tf' + tf)
-           connection.query(getTotalFrequency(titleWordId), (err, result) => {
-             if (err) throw err
-             else {
-              if(result[0]['SUM(frequency)'] === null) {
-                connection.query(setCurrentFrequency(titleWordId, documentId, frequency, tf),(err, result) => {
-                  if (err) throw err
-                  else {
+           const titleExistResult = result
+          connection.query(insertToTitleWords(element), (err, result) => {
+            if (err) throw err
+            else {
+              const titleWordId = titleExistResult.length === 0 ? result.insertId : titleExistResult[0].id
+              const frequency = getFrequency(element, req.body.document)
+              const words = countWords(req.body.document)
+              const tf = parseFloat(frequency/words)
+              console.log('tf' + tf)
+              connection.query(getTotalFrequency(titleWordId), (err, result) => {
+                if (err) throw err
+                else {
+                  if(result[0]['SUM(frequency)'] === null) {
+                    connection.query(setCurrentFrequency(titleWordId, documentId, frequency, tf),(err, result) => {
+                      if (err) throw err
+                      else {
+                      }
+                    })
+                  } else {
+                    connection.query(setCurrentFrequency(titleWordId, documentId, frequency + parseInt(result[0]['SUM(frequency)'], tf)),(err, result) => {
+                      if (err) throw err
+                      else {
+                      }
+                    })
                   }
-                })
-              } else {
-                connection.query(setCurrentFrequency(titleWordId, documentId, frequency + parseInt(result[0]['SUM(frequency)'], tf)),(err, result) => {
-                  if (err) throw err
-                  else {
-                  }
-                })
-              }
-             }
-           })
-         }
-       })
+                }
+              })
+            }
+          })
+        }
+      })
      });
      return res.status(201).send({
       success: 'true',
